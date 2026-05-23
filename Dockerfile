@@ -5,9 +5,13 @@ FROM ls250824/python-cuda-ubuntu-develop:23052026
 RUN curl -fsSL https://code-server.dev/install.sh | sh
 
 # Install oobabooga
-RUN git clone --depth=1 https://github.com/oobabooga/textgen.git /textgen
+RUN RUN --mount=type=cache,target=/root/.cache/git \
+git clone --depth=1 https://github.com/oobabooga/textgen.git /textgen
 
 WORKDIR /textgen
+
+RUN --mount=type=cache,target=/root/.cache/pip \
+python -m pip install -r requirements/full/requirements.txt
 
 # Set working directory
 WORKDIR /
@@ -39,13 +43,6 @@ RUN which python && \
     which pip && \
     python --version && \
     python -c "import sys; print(sys.prefix)"
-
-RUN python - <<'PY'
-import torch
-print("torch:", torch.__version__)
-print("cuda build:", torch.version.cuda)
-print("cuda available:", torch.cuda.is_available())
-PY
 
 # Start script
 CMD [ "/start.sh" ]
