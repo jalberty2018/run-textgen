@@ -12,7 +12,7 @@
 
 ## Hardware Requirements  
  
-- **Recommended GPUs**: Nvidia RTX A4500, A40
+- **Recommended GPUs**: Nvidia RTX A4500, RTX A5000, A40, L40S etc...
 - **Storage**:  
   - **Volume**: 80GB (`/workspace`)  
   - **Pod Volume**: 5Gb  

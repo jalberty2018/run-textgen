@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM ls250824/python-pytorch-cuda-ubuntu-develop:23052026
+FROM ls250824/python-cuda-ubuntu-develop:23052026
 
 # Install code-server
 RUN curl -fsSL https://code-server.dev/install.sh | sh
@@ -8,12 +8,6 @@ RUN curl -fsSL https://code-server.dev/install.sh | sh
 RUN git clone --depth=1 https://github.com/oobabooga/textgen.git /textgen
 
 WORKDIR /textgen
-
-# Requirements installeren, maar torch zelf niet opnieuw laten overschrijven
-RUN cp requirements/full/requirements.txt /tmp/requirements-full.txt && \
-    grep -v -E '^[[:space:]]*(torch|torchvision|torchaudio|flash-attn|flash_attn|exllamav3)([<>=!~ ]|$)' \
-      /tmp/requirements-full.txt > /tmp/requirements-patched.txt && \
-    python -m pip install -r /tmp/requirements-patched.txt
 
 # Set working directory
 WORKDIR /
@@ -35,7 +29,7 @@ EXPOSE 7860 9000
 
 # Labels
 LABEL org.opencontainers.image.title="oobabooga textgen" \
-      org.opencontainers.image.description="Pytorch 2.9.0 CUDA 12.8.1 develop + Ubuntu 24.04 + code-server + ai-textgen" \
+      org.opencontainers.image.description="Python 2.13 + cuda 12.8.1 + Ubuntu 24.04 + code-server + textgen" \
       org.opencontainers.image.source="https://hub.docker.com/r/ls250824/run-textgen" \
       org.opencontainers.image.licenses="MIT"
 
