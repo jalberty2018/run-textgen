@@ -33,7 +33,7 @@
 
 #### ls250824/pytorch-cuda-ubuntu-runtime
 	
-[![Docker Image Version](https://img.shields.io/docker/v/ls250824/python-pytorch-cuda-ubuntu-develop)](https://hub.docker.com/r/ls250824/python-pytorch-cuda-ubuntu-develop)
+[![Docker Image Version](https://img.shields.io/docker/v/ls250824/python-cuda-ubuntu-develop)](https://hub.docker.com/r/ls250824/python-cuda-ubuntu-develop)
 
 ### Custom Build: 
 
