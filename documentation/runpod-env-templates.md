@@ -30,11 +30,9 @@ PASSWORD="{{ RUNPOD_SECRET_CODE-SERVER-NEW }}"
 GRADIO_AUTH="{{ RUNPOD_SECRET_Gradio_auth }}"
 HF_MODEL_GGUF1=bartowski/cognitivecomputations_Dolphin-Mistral-24B-Venice-Edition-GGUF
 HF_MODEL_GGUF_FILE1=cognitivecomputations_Dolphin-Mistral-24B-Venice-Edition-Q6_K_L.gguf
-HF_MMPROJ_GGUF1=alexnt2/dolphin-mistral-24b-venice-edition-literotica
-HF_MMPROJ_GGUF_FILE1=Dolphin-Mistral-24B-Venice-Edition.BF16-mmproj.gguf
 ```
 
-## [Dolphin3 mistral Venice vision](https://huggingface.co/alexnt2/dolphin-mistral-24b-venice-edition-literotica)
+## [Dolphin mistral Venice literorica vision](https://huggingface.co/alexnt2/dolphin-mistral-24b-venice-edition-literotica)
 
 ```bash
 HF_TOKEN="{{ RUNPOD_SECRET_HF_TOKEN_WRITE }}"
