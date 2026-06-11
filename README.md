@@ -23,9 +23,9 @@
 |-------|------|
 | OS        | `Ubuntu v24.04 x86_64` |
 | Python    | `3.13.x`             |
-| PyTorch   | `2.9.0`              |
 | CUDA      | `12.8.1`             |
-| Triton    | `3.5.1`               |
+| Textgen    | `4.9`               |
+| Code-Server | `latest`               |
 
 ## Available Images
 

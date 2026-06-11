@@ -10,10 +10,20 @@
 
 ## Hardware Requirements  
  
-- **Recommended GPUs**: RTX A4500, A40
+- **Recommended GPUs**: RTX A4500, RTX A5000, A40
 - **Storage**:  
   - **Volume**: 80GB (`/workspace`)  
   - **Pod Volume**: 5Gb  
+  
+## Image setup
+
+| Component | Version              |
+|-------|------|
+| OS        | `Ubuntu v24.04 x86_64` |
+| Python    | `3.13.x`             |
+| CUDA      | `12.8.1`             |
+| Textgen    | `4.9`               |
+| Code-Server | `latest`               |
    
 ## Environment Variables  
 

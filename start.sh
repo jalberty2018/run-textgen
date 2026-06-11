@@ -120,9 +120,22 @@ fi
 download_model_HF_GGUF() {
   local model_var="$1" file_var="$2"
   local model="${!model_var:-}" file="${!file_var:-}"
+  local target="/workspace/textgen/user_data/models"
+
   if [[ -n "$model" && -n "$file" ]]; then
+    mkdir -p "$target"
     echo "ℹ️ [Download] GGUF model: $model ($file)"
-    hf download "$model" "$file" --local-dir "/workspace/textgen/user_data/models/"
+
+    hf download "$model" "$file" --local-dir "$target"
+
+    local src="$target/$file"
+    local dst="$target/$(basename "$file")"
+
+    if [[ -f "$src" && "$src" != "$dst" ]]; then
+      mv -f "$src" "$dst"
+      find "$target" -type d -empty -delete
+    fi
+
     sleep 1
   fi
 }
@@ -130,9 +143,22 @@ download_model_HF_GGUF() {
 download_mmproj_HF_GGUF() {
   local model_var="$1" file_var="$2"
   local model="${!model_var:-}" file="${!file_var:-}"
+  local target="/workspace/textgen/user_data/mmproj"
+
   if [[ -n "$model" && -n "$file" ]]; then
+    mkdir -p "$target"
     echo "ℹ️ [Download] GGUF mmproj: $model ($file)"
-    hf download "$model" "$file" --local-dir "/workspace/textgen/user_data/mmproj/"
+
+    hf download "$model" "$file" --local-dir "$target"
+
+    local src="$target/$file"
+    local dst="$target/$(basename "$file")"
+
+    if [[ -f "$src" && "$src" != "$dst" ]]; then
+      mv -f "$src" "$dst"
+      find "$target" -type d -empty -delete
+    fi
+
     sleep 1
   fi
 }
