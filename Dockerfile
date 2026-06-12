@@ -32,11 +32,11 @@ WORKDIR /workspace
 ENV HF_HOME=/workspace/cache
 
 # Expose ports for Gradio, code-server
-EXPOSE 7860 9000 
+EXPOSE 7860 9000
 
 # Labels
 LABEL org.opencontainers.image.title="oobabooga textgen version 4.9" \
-      org.opencontainers.image.description="Python 2.13 + cuda 12.8.1 + Ubuntu 24.04 + code-server + textgen" \
+      org.opencontainers.image.description="Python 3.13 + cuda 12.8.1 + Ubuntu 24.04 + code-server + textgen" \
       org.opencontainers.image.source="https://hub.docker.com/r/ls250824/run-textgen" \
       org.opencontainers.image.licenses="MIT"
 
