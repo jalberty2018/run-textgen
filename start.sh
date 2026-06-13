@@ -164,11 +164,21 @@ download_mmproj_HF_GGUF() {
 }
 
 download_model_HF() {
-  local model_var="$1" dest_dir_var="$2"
-  local model="${!model_var:-}" dest_dir="${!dest_dir_var:-}"
-  if [[ -n "$model" && -n "$dest_dir" ]]; then
-    echo "ℹ️ [Download] model repo: $model -> $dest_dir"
-    hf download "$model" --local-dir "/workspace/textgen/user_data/models/$dest_dir/"
+  local model_var="$1" dest_dir_var="$2" include_var="${3:-}"
+  local model="${!model_var:-}" dest_dir="${!dest_dir_var:-}" include=""
+  [[ -n "$include_var" ]] && include="${!include_var:-}"
+
+  if [[ -n "$model" && ( -n "$dest_dir" || -n "$include" ) ]]; then
+    local local_dir="/workspace/textgen/user_data/models/"
+    [[ -n "$dest_dir" ]] && local_dir="${local_dir}${dest_dir}/"
+
+    echo "ℹ️ [Download] model repo: $model -> $local_dir"
+    if [[ -n "$include" ]]; then
+      echo "ℹ️ [Download] include filter: $include"
+      hf download "$model" --include "$include" --local-dir "$local_dir"
+    else
+      hf download "$model" --local-dir "$local_dir"
+    fi
     sleep 1
   fi
 }
@@ -199,7 +209,7 @@ if [[ "$HAS_CUDA" -eq 1 ]]; then
 	
 	# Full repos (into subdirs)
 	for i in {1..6}; do
-	  download_model_HF "HF_MODEL${i}" "HF_MODEL_DIR${i}"
+	  download_model_HF "HF_MODEL${i}" "HF_MODEL_DIR${i}" "HF_MODEL_INCLUDE${i}"
 	done
 	
 	# EXL repos with explicit revision
