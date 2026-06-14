@@ -30,7 +30,7 @@ GRADIO_AUTH="{{ RUNPOD_SECRET_Gradio_auth }}"
 HF_MODEL_GGUF1=SulphurAI/Sulphur-2-base
 HF_MODEL_GGUF_FILE1=prompt_enhancer_uncensored/prompt_enhancer_uncensored-q8_0.gguf
 HF_MMPROJ_GGUF1=SulphurAI/Sulphur-2-base
-HF_MMPROJ_GGUF_FILE1=prompt_enhancer/mmproj-BF16.gguf
+HF_MMPROJ_GGUF_FILE1=prompt_enhancer_uncensored/mmproj-prompt_enhancer_uncensored.gguf
 ```
 
 ## [Dolphin 3.0 Llama](https://huggingface.co/skilledu/Dolphin3.0-Llama3.1-8B-abliterated)
@@ -53,7 +53,7 @@ HF_MODEL_GGUF1=bartowski/cognitivecomputations_Dolphin-Mistral-24B-Venice-Editio
 HF_MODEL_GGUF_FILE1=cognitivecomputations_Dolphin-Mistral-24B-Venice-Edition-Q6_K_L.gguf
 ```
 
-## [Dolphin mistral Venice literorica vision](https://huggingface.co/alexnt2/dolphin-mistral-24b-venice-edition-literotica)
+## [Dolphin Mistral Venice literotica vision](https://huggingface.co/alexnt2/dolphin-mistral-24b-venice-edition-literotica)
 
 ```bash
 HF_TOKEN="{{ RUNPOD_SECRET_HF_TOKEN_WRITE }}"

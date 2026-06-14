@@ -1,6 +1,6 @@
 # Pod image
 
-## **Huggingface**
+## **Hugging Face**
 
 ```bash
 export HF_TOKEN="xxxxx"
@@ -19,8 +19,8 @@ nvidia-smi # GPU information
 htop       # Process Monitoring
 mc         # Midnight Commander (file manager)
 nano       # Text Editor
-ncdu       # Clean Up
-unzip      # uncompress
+ncdu       # Clean up
+unzip      # Uncompress
 7z         # Archiving
 runpodctl  # runpod pod management
 ```

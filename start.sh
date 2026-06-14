@@ -3,6 +3,14 @@
 echo "[INFO] Pod run-textgen started"
 echo "ℹ️ Wait until the message 🎉 Provisioning done 🎉. is displayed"
 
+# Keep Hugging Face downloads readable in RunPod logs.
+export HF_HUB_DISABLE_PROGRESS_BARS=1
+export HF_HUB_DISABLE_TELEMETRY=1
+export HF_HUB_VERBOSITY=warning
+export NO_COLOR=1
+export CLICOLOR=0
+export FORCE_COLOR=0
+
 # Enable SSH if PUBLIC_KEY is set
 if [[ -n "$PUBLIC_KEY" ]]; then
     mkdir -p ~/.ssh && chmod 700 ~/.ssh
@@ -164,21 +172,26 @@ download_mmproj_HF_GGUF() {
 }
 
 download_model_HF() {
-  local model_var="$1" dest_dir_var="$2" include_var="${3:-}"
-  local model="${!model_var:-}" dest_dir="${!dest_dir_var:-}" include=""
+  local model_var="$1" dest_dir_var="$2" include_var="${3:-}" exclude_var="${4:-}"
+  local model="${!model_var:-}" dest_dir="${!dest_dir_var:-}" include="" exclude=""
   [[ -n "$include_var" ]] && include="${!include_var:-}"
+  [[ -n "$exclude_var" ]] && exclude="${!exclude_var:-}"
 
-  if [[ -n "$model" && ( -n "$dest_dir" || -n "$include" ) ]]; then
+  if [[ -n "$model" && ( -n "$dest_dir" || -n "$include" || -n "$exclude" ) ]]; then
     local local_dir="/workspace/textgen/user_data/models/"
     [[ -n "$dest_dir" ]] && local_dir="${local_dir}${dest_dir}/"
 
+    local args=()
     echo "ℹ️ [Download] model repo: $model -> $local_dir"
     if [[ -n "$include" ]]; then
       echo "ℹ️ [Download] include filter: $include"
-      hf download "$model" --include "$include" --local-dir "$local_dir"
-    else
-      hf download "$model" --local-dir "$local_dir"
+      args+=(--include "$include")
     fi
+    if [[ -n "$exclude" ]]; then
+      echo "ℹ️ [Download] exclude filter: $exclude"
+      args+=(--exclude "$exclude")
+    fi
+    hf download "$model" "${args[@]}" --local-dir "$local_dir"
     sleep 1
   fi
 }
@@ -209,7 +222,7 @@ if [[ "$HAS_CUDA" -eq 1 ]]; then
 	
 	# Full repos (into subdirs)
 	for i in {1..6}; do
-	  download_model_HF "HF_MODEL${i}" "HF_MODEL_DIR${i}" "HF_MODEL_INCLUDE${i}"
+	  download_model_HF "HF_MODEL${i}" "HF_MODEL_DIR${i}" "HF_MODEL_INCLUDE${i}" "HF_MODEL_EXCLUDE${i}"
 	done
 	
 	# EXL repos with explicit revision

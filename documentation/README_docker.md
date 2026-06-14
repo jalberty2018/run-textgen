@@ -20,10 +20,16 @@
 | Component | Version              |
 |-------|------|
 | OS        | `Ubuntu v24.04 x86_64` |
-| Python    | `3.13.x`             |
+| Python    | `3.13.3`             |
 | CUDA      | `12.8.1`             |
 | Textgen    | `4.9`               |
 | Code-Server | `latest`               |
+
+## Base image
+
+`run-textgen` is built from `ls250824/python-cuda-ubuntu-develop:23052026`, which is based on `nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04`.
+
+The base image provides Ubuntu 24.04, CUDA 12.8.1, cuDNN development libraries, Python 3.13.3 compiled from source, and a virtual environment at `/opt/venv`. It includes build tools and common RunPod utilities. PyTorch is installed later through the textgen requirements, not by the base image.
 
 ## Environment Variables
 
@@ -31,7 +37,7 @@
 
 | Token        | Environment Variable | Example | Required |
 |--------------|----------------------|---------|----------|
-| Hugging face  | `HF_TOKEN`           | token | Optional  |
+| Hugging Face  | `HF_TOKEN`           | token | Optional  |
 | Code Server  | `PASSWORD`           | password | Optional |
 | textgen       | `GRADIO_AUTH`        | user:password | Optional |
 
@@ -49,18 +55,18 @@
 
 ## 🤖 **Transformers Model Downloads**
 
-| Model Type              | Hugging Face URL Variable | Destination Subfolder Variable | Include Filter Variable |
-|-------------------------|----------------------------|----------------------------------|-------------------------|
-| Transformers   | `HF_MODEL[1-6]`                | `HF_MODEL_DIR[1-6]`                 | `HF_MODEL_INCLUDE[1-6]` |
+| Model Type              | Hugging Face URL Variable | Destination Subfolder Variable | Include Filter Variable | Exclude Filter Variable |
+|-------------------------|----------------------------|----------------------------------|-------------------------|-------------------------|
+| Transformers   | `HF_MODEL[1-6]`                | `HF_MODEL_DIR[1-6]`                 | `HF_MODEL_INCLUDE[1-6]` | `HF_MODEL_EXCLUDE[1-6]` |
 
-`HF_MODEL_INCLUDE[1-6]` is optional and maps to `hf download --include`. If no destination subfolder is set, included files are downloaded into `/workspace/textgen/user_data/models/`.
+`HF_MODEL_INCLUDE[1-6]` and `HF_MODEL_EXCLUDE[1-6]` are optional and map to `hf download --include` and `hf download --exclude`. If no destination subfolder is set, filtered files are downloaded into `/workspace/textgen/user_data/models/`.
 
 
 ## 🤖 **EXL Model Downloads**
 
 | Model Type            |    Hugging Face URL Variable | Revision | Destination Subfolder Variable |
 |-------------------------|----------|------------------|----------------------------------|
-| EXL    | `HF_EXL1`  |  `HF_EXL_REVISION[1-6]`  |  `HF_EXL_DIR[1-6]`                 |
+| EXL    | `HF_EXL[1-6]`  |  `HF_EXL_REVISION[1-6]`  |  `HF_EXL_DIR[1-6]`                 |
 
 ## Connection options
 
@@ -74,7 +80,7 @@
 
 ## Website models
 
-- [Huggingface](https://huggingface.co/)
+- [Hugging Face](https://huggingface.co/)
 
 ## Websites software Github
 

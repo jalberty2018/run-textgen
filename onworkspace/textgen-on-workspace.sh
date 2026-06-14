@@ -7,7 +7,8 @@ if [[ ! -d /workspace/textgen  ]]; then
 	# If we don't already have /workspace/textgen , move it there
 	mv /textgen  /workspace
 	# Set permissions right for directory
-    chmod -R 777 /workspace/textgen /user
+    chmod -R 777 /workspace/textgen
+    [[ -d /user ]] && chmod -R 777 /user
 else
 	# otherwise delete the default textgen  folder which is always re-created on pod start from the Docker
 	rm -rf /textgen 
