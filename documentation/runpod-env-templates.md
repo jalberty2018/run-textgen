@@ -1,6 +1,6 @@
 # Runpod templates
 
-## [Sulphur](https://huggingface.co/SulphurAI/Sulphur-2-base/tree/main/prompt_enhancer)
+## [Sulphur prompt enhancer](https://huggingface.co/SulphurAI/Sulphur-2-base/tree/main/prompt_enhancer)
 
 ```bash
 HF_TOKEN="{{ RUNPOD_SECRET_HF_TOKEN_WRITE }}"
@@ -10,9 +10,9 @@ HF_MODEL_GGUF1=SulphurAI/Sulphur-2-base
 HF_MODEL_GGUF_FILE1=prompt_enhancer/sulphur_prompt_enhancer_model-q8_0.gguf
 HF_MMPROJ_GGUF1=SulphurAI/Sulphur-2-base
 HF_MMPROJ_GGUF_FILE1=prompt_enhancer/mmproj-BF16.gguf
-
 ```
-## [Sulphur uncensored](https://github.com/SulphurAI/Sulphur)
+
+## [Sulphur prompt enhancer uncensored](https://github.com/SulphurAI/Sulphur)
 
 ```bash
 HF_TOKEN="{{ RUNPOD_SECRET_HF_TOKEN_WRITE }}"
@@ -20,6 +20,17 @@ PASSWORD="{{ RUNPOD_SECRET_CODE-SERVER-NEW }}"
 GRADIO_AUTH="{{ RUNPOD_SECRET_Gradio_auth }}"
 HF_MODEL1=SulphurAI/Sulphur-2-base
 HF_MODEL_INCLUDE1=prompt_enhancer_uncensored/*
+HF_MODEL_EXCLUDE1=prompt_enhancer_uncensored/*.gguf
+```
+
+```bash
+HF_TOKEN="{{ RUNPOD_SECRET_HF_TOKEN_WRITE }}"
+PASSWORD="{{ RUNPOD_SECRET_CODE-SERVER-NEW }}"
+GRADIO_AUTH="{{ RUNPOD_SECRET_Gradio_auth }}"
+HF_MODEL_GGUF1=SulphurAI/Sulphur-2-base
+HF_MODEL_GGUF_FILE1=prompt_enhancer_uncensored/prompt_enhancer_uncensored-q8_0.gguf
+HF_MMPROJ_GGUF1=SulphurAI/Sulphur-2-base
+HF_MMPROJ_GGUF_FILE1=prompt_enhancer/mmproj-BF16.gguf
 ```
 
 ## [Dolphin 3.0 Llama](https://huggingface.co/skilledu/Dolphin3.0-Llama3.1-8B-abliterated)
