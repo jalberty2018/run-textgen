@@ -71,13 +71,6 @@ docker pull ls250824/run-textgen:<version>
 
 `HF_MODEL_INCLUDE[1-6]` is optional and maps to `hf download --include`. If no destination subfolder is set, included files are downloaded into `/workspace/textgen/user_data/models/`.
 
-### Sulphur uncensored example
-
-```bash
-HF_MODEL1=SulphurAI/Sulphur-2-base
-HF_MODEL_INCLUDE1=prompt_enhancer_uncensored/*
-```
-
 ## 🤖 **EXL Model Downloads**
 
 | Model Type            |    Hugging Face URL Variable | Revision | Destination Subfolder Variable |
