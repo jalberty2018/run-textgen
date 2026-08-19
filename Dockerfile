@@ -57,10 +57,8 @@ RUN which python && \
     python --version && \
     python -c "import sys; print(sys.prefix)"
 
-RUN python -c "import torch, torchvision, torchaudio, triton, importlib, importlib.util as iu; \
+RUN python -c "import torch, triton, importlib, importlib.util as iu; \
 print(f'Torch: {torch.__version__}'); \
-print(f'Torchvision: {torchvision.__version__}'); \
-print(f'Torchaudio: {torchaudio.__version__}'); \
 print(f'Triton: {triton.__version__}'); \
 print('CUDA available:', torch.cuda.is_available()); \
 print('CUDA version:', torch.version.cuda); \
