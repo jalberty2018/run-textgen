@@ -21,11 +21,11 @@ python -m pip install -r requirements/full/requirements.txt
 # Set working directory
 WORKDIR /
 
-# Install code-server
-RUN curl -fsSL https://code-server.dev/install.sh | sh
-
 # Update Hugging Face CLI and verify the hf command is available
 RUN hf update && hf version
+
+# Install code-server
+RUN curl -fsSL https://code-server.dev/install.sh | sh
 
 # Copy scripts and make them executable
 COPY --chmod=755 start.sh onworkspace/textgen-on-workspace.sh onworkspace/readme-on-workspace.sh /

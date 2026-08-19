@@ -10,7 +10,7 @@
 
 ## Hardware Requirements
 
-- **Recommended GPUs**: RTX A4500, RTX A5000, A40
+- **Recommended GPUs**: RTX 4090, L40S , RTX A4500, RTX A5000, A40
 - **Storage**:
   - **Volume**: 80GB (`/workspace`)
   - **Pod Volume**: 5GB
@@ -53,6 +53,17 @@ The base image provides Ubuntu 24.04, CUDA 12.8.1, cuDNN development libraries, 
 |----------------|---------------------------|---------------------------|
 | GGUF MMPROJ     | `HF_MMPROJ_GGUF[1-6]`          | `HF_MMPROJ_GGUF_FILE[1-6]`     |
 
+## VRAM-dependent GGUF downloads
+
+At startup, the script reads the total memory of every GPU with `nvidia-smi` and uses the largest value. A GPU with more than `VRAM_THRESHOLD` GiB selects HVRAM; all other GPUs select LVRAM. The default threshold is `36` GiB.
+
+| Profile | GGUF Repository | GGUF File | MMPROJ Repository | MMPROJ File |
+|---------|-----------------|-----------|-------------------|-------------|
+| HVRAM | `HF_MODEL_HVRAM_GGUF[1-6]` | `HF_MODEL_HVRAM_GGUF_FILE[1-6]` | `HF_MODEL_HVRAM_MMPROJ_GGUF[1-6]` | `HF_MODEL_HVRAM_MMPROJ_GGUF_FILE[1-6]` |
+| LVRAM | `HF_MODEL_LVRAM_GGUF[1-6]` | `HF_MODEL_LVRAM_GGUF_FILE[1-6]` | `HF_MODEL_LVRAM_MMPROJ_GGUF[1-6]` | `HF_MODEL_LVRAM_MMPROJ_GGUF_FILE[1-6]` |
+
+Only variables belonging to the selected profile are downloaded. The existing `HF_MODEL_GGUF[1-6]` and `HF_MMPROJ_GGUF[1-6]` variables remain VRAM-independent and are always processed. Set `VRAM_THRESHOLD` to change the boundary.
+
 ## 🤖 **Transformers Model Downloads**
 
 | Model Type              | Hugging Face URL Variable | Destination Subfolder Variable | Include Filter Variable | Exclude Filter Variable |
@@ -61,6 +72,14 @@ The base image provides Ubuntu 24.04, CUDA 12.8.1, cuDNN development libraries, 
 
 `HF_MODEL_INCLUDE[1-6]` and `HF_MODEL_EXCLUDE[1-6]` are optional and map to `hf download --include` and `hf download --exclude`. If no destination subfolder is set, filtered files are downloaded into `/workspace/textgen/user_data/models/`.
 
+### Hugging Face download behavior
+
+All Hugging Face model downloads start with the Xet backend. Before downloading, the script performs an `hf download --dry-run` to report the expected total size. During the transfer, RunPod logs show downloaded gigabytes and transfer speed. If the download has no output or file growth for 300 seconds, the stalled process is stopped and retried automatically with Xet disabled (plain HTTP).
+
+| Environment Variable | Description | Default |
+|----------------------|-------------|---------|
+| `HF_DOWNLOAD_STALL_TIMEOUT` | Seconds without download activity before the current attempt is stopped | `300` |
+| `HF_DOWNLOAD_KILL_AFTER` | Grace period in seconds before a stalled process is force-killed | `30` |
 
 ## 🤖 **EXL Model Downloads**
 

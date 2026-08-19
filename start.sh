@@ -6,7 +6,7 @@ echo "ℹ️ Wait until the message 🎉 Provisioning done 🎉. is displayed"
 # Hugging Face CLI output tuned for RunPod plain logs.
 export NO_COLOR=1
 export HF_HUB_VERBOSITY=warning
-export HF_HUB_DISABLE_PROGRESS_BARS=1
+export HF_HUB_DISABLE_PROGRESS_BARS=0
 export HF_HUB_DISABLE_TELEMETRY=1
 export DO_NOT_TRACK=1
 export HF_HUB_DISABLE_UPDATE_CHECK=1
@@ -125,6 +125,238 @@ fi
 
 # --- Download helpers ---
 
+run_hf_download() {
+    local stall_timeout="${HF_DOWNLOAD_STALL_TIMEOUT:-300}"
+    local kill_after="${HF_DOWNLOAD_KILL_AFTER:-30}"
+    local hf_command
+    local hf_dry_run_command
+    local dry_run_output
+    local total_size_value
+    local total_size_unit
+    local total_bytes=0
+    local tmp_dir
+    local fifo
+    local pid
+    local watchdog_pid
+    local progress_pid
+    local last_activity_file
+    local activity_tmp_file
+    local progress_activity_tmp_file
+    local exit_code
+    local download_dir=""
+    local -a download_args=("$@")
+    local arg_index
+
+    for ((arg_index = 0; arg_index < ${#download_args[@]}; arg_index++)); do
+        if [[ "${download_args[arg_index]}" == "--local-dir" ]] \
+           && (( arg_index + 1 < ${#download_args[@]} )); then
+            download_dir="${download_args[arg_index + 1]}"
+            break
+        fi
+    done
+
+    echo "ℹ️ [DOWNLOAD] Stall watchdog: ${stall_timeout}s"
+    echo "ℹ️ [DOWNLOAD] Kill grace period: ${kill_after}s"
+
+    # Safely quote all arguments passed to: hf download. Force human output so
+    # progress remains enabled when captured through the pseudo-terminal.
+    printf -v hf_command '%q ' hf download --format human "$@"
+
+    # Determine the selected download size without transferring model data.
+    printf -v hf_dry_run_command '%q ' hf download --dry-run --format human "$@"
+    dry_run_output="$(eval "$hf_dry_run_command" 2>&1 || true)"
+    if [[ "$dry_run_output" =~ totalling[[:space:]]+([0-9]+([.][0-9]+)?)([KMGTPE]?) ]]; then
+        total_size_value="${BASH_REMATCH[1]}"
+        total_size_unit="${BASH_REMATCH[3]}"
+        total_bytes="$(awk -v value="$total_size_value" -v unit="$total_size_unit" '
+            BEGIN {
+                exponent = index("KMGTPE", unit)
+                multiplier = 1
+                for (i = 0; i < exponent; i++) multiplier *= 1000
+                printf "%.0f", value * multiplier
+            }
+        ')"
+        printf 'ℹ️ [DOWNLOAD] Total size: %.2f GB\n' "$(awk -v bytes="$total_bytes" 'BEGIN { print bytes / 1000000000 }')"
+    else
+        echo "⚠️ [DOWNLOAD] Total size could not be determined; continuing download."
+    fi
+
+    tmp_dir="$(mktemp -d)"
+    fifo="${tmp_dir}/hf-output.fifo"
+    last_activity_file="${tmp_dir}/last_activity"
+    activity_tmp_file="${tmp_dir}/last_activity.tmp"
+    progress_activity_tmp_file="${tmp_dir}/last_activity.progress.tmp"
+
+    mkfifo "$fifo"
+    date +%s > "$activity_tmp_file"
+    mv -f "$activity_tmp_file" "$last_activity_file"
+
+    cleanup() {
+        [[ -n "${watchdog_pid:-}" ]] && kill "$watchdog_pid" 2>/dev/null || true
+        [[ -n "${progress_pid:-}" ]] && kill "$progress_pid" 2>/dev/null || true
+        [[ -n "${pid:-}" ]] && kill "$pid" 2>/dev/null || true
+        rm -rf "$tmp_dir"
+    }
+
+    trap cleanup RETURN
+
+    run_download_attempt() {
+        local disable_xet="$1"
+        local backend_name="$2"
+
+        date +%s > "$activity_tmp_file"
+        mv -f "$activity_tmp_file" "$last_activity_file"
+
+        echo "ℹ️ [DOWNLOAD] Starting with ${backend_name}..."
+
+        (
+            script --quiet --return --flush \
+                --command "HF_HUB_DISABLE_XET=${disable_xet} ${hf_command}" \
+                /dev/null
+        ) >"$fifo" 2>&1 &
+
+        pid=$!
+
+        # Xet does not always emit progress when output is captured. Report
+        # growth of the destination and use only real byte growth as activity.
+        if [[ -n "$download_dir" ]]; then
+            (
+                local baseline_bytes
+                local previous_bytes
+                local current_bytes
+                local downloaded_bytes
+                local downloaded_gb
+                local speed_mbps
+                local previous_sample_time
+                local current_sample_time
+                local elapsed_seconds
+                local interval_bytes
+
+                baseline_bytes="$(du -s -B1 "$download_dir" 2>/dev/null | awk '{print $1}')"
+                baseline_bytes="${baseline_bytes:-0}"
+                previous_bytes="$baseline_bytes"
+                previous_sample_time="$(date +%s)"
+
+                while kill -0 "$pid" 2>/dev/null; do
+                    sleep 10
+                    current_bytes="$(du -s -B1 "$download_dir" 2>/dev/null | awk '{print $1}')"
+                    current_bytes="${current_bytes:-0}"
+                    current_sample_time="$(date +%s)"
+
+                    if (( current_bytes > previous_bytes )); then
+                        downloaded_bytes=$((current_bytes - baseline_bytes))
+                        interval_bytes=$((current_bytes - previous_bytes))
+                        elapsed_seconds=$((current_sample_time - previous_sample_time))
+                        (( elapsed_seconds < 1 )) && elapsed_seconds=1
+                        downloaded_gb="$(awk -v bytes="$downloaded_bytes" 'BEGIN { printf "%.2f", bytes / 1000000000 }')"
+                        speed_mbps="$(awk -v bytes="$interval_bytes" -v seconds="$elapsed_seconds" 'BEGIN { printf "%.1f", bytes / seconds / 1000000 }')"
+                        if (( total_bytes > 0 )); then
+                            printf '⬇️ [DOWNLOAD] Progress: %s / %.2f GB | %s MB/s\n' \
+                                "$downloaded_gb" \
+                                "$(awk -v bytes="$total_bytes" 'BEGIN { print bytes / 1000000000 }')" \
+                                "$speed_mbps"
+                        else
+                            printf '⬇️ [DOWNLOAD] Progress: %s GB downloaded | %s MB/s\n' \
+                                "$downloaded_gb" "$speed_mbps"
+                        fi
+                        date +%s > "$progress_activity_tmp_file"
+                        mv -f "$progress_activity_tmp_file" "$last_activity_file"
+                    else
+                        echo "ℹ️ [DOWNLOAD] Waiting for transfer progress..."
+                    fi
+
+                    previous_bytes="$current_bytes"
+                    previous_sample_time="$current_sample_time"
+                done
+            ) &
+            progress_pid=$!
+        fi
+
+        (
+            while kill -0 "$pid" 2>/dev/null; do
+                sleep 10
+
+                local now
+                local last
+                local inactive
+
+                now="$(date +%s)"
+                last="$(cat "$last_activity_file" 2>/dev/null || true)"
+
+                if [[ ! "$last" =~ ^[0-9]+$ ]] || (( last > now )); then
+                    continue
+                fi
+
+                inactive=$((now - last))
+
+                if (( inactive >= stall_timeout )); then
+                    echo
+                    echo "⚠️ [DOWNLOAD] No activity for ${inactive}s."
+                    echo "⚠️ [DOWNLOAD] ${backend_name} appears stalled."
+
+                    kill -TERM "$pid" 2>/dev/null || true
+                    sleep "$kill_after"
+
+                    if kill -0 "$pid" 2>/dev/null; then
+                        echo "⚠️ [DOWNLOAD] Process did not stop after ${kill_after}s; sending SIGKILL."
+                        kill -KILL "$pid" 2>/dev/null || true
+                    fi
+
+                    exit 124
+                fi
+            done
+        ) &
+
+        watchdog_pid=$!
+
+        while IFS= read -r line; do
+            date +%s > "$activity_tmp_file"
+            mv -f "$activity_tmp_file" "$last_activity_file"
+            printf '%s\n' "$line"
+        done < <(
+            stdbuf -oL tr '\r' '\n' <"$fifo" \
+                | sed -u -E \
+                    -e '/^[[:space:]]*$/d' \
+                    -e $'s/\033\\[[0-9;?]*[ -\\/]*[@-~]//g' \
+                    -e 's/^([^:]+):[[:space:]]*([0-9]+)%\|[^|]*\|[[:space:]]*([^[:space:]]+).*/Downloading \1 \2% \3/'
+        )
+
+        wait "$pid"
+        exit_code=$?
+
+        kill "$watchdog_pid" 2>/dev/null || true
+        wait "$watchdog_pid" 2>/dev/null || true
+        [[ -n "${progress_pid:-}" ]] && kill "$progress_pid" 2>/dev/null || true
+        [[ -n "${progress_pid:-}" ]] && wait "$progress_pid" 2>/dev/null || true
+
+        pid=""
+        watchdog_pid=""
+        progress_pid=""
+
+        return "$exit_code"
+    }
+
+    if run_download_attempt 0 "Xet"; then
+        echo "✅ [DOWNLOAD] Download completed successfully with Xet."
+        return 0
+    else
+        exit_code=$?
+    fi
+
+    echo "⚠️ [DOWNLOAD] Xet download stopped or failed with exit code ${exit_code}."
+    echo "ℹ️ [DOWNLOAD] Retrying with Xet disabled (plain HTTP)..."
+
+    if run_download_attempt 1 "plain HTTP"; then
+        echo "✅ [DOWNLOAD] Download completed successfully using plain HTTP."
+        return 0
+    else
+        exit_code=$?
+    fi
+
+    echo "❌ [DOWNLOAD] Plain HTTP download failed with exit code ${exit_code}."
+    return "$exit_code"
+}
+
 download_model_HF_GGUF() {
   local model_var="$1" file_var="$2"
   local model="${!model_var:-}" file="${!file_var:-}"
@@ -134,7 +366,7 @@ download_model_HF_GGUF() {
     mkdir -p "$target"
     echo "ℹ️ [Download] GGUF model: $model ($file)"
 
-    hf download "$model" "$file" --local-dir "$target"
+    run_hf_download "$model" "$file" --local-dir "$target"
 
     local src="$target/$file"
     local dst="$target/$(basename "$file")"
@@ -157,7 +389,7 @@ download_mmproj_HF_GGUF() {
     mkdir -p "$target"
     echo "ℹ️ [Download] GGUF mmproj: $model ($file)"
 
-    hf download "$model" "$file" --local-dir "$target"
+    run_hf_download "$model" "$file" --local-dir "$target"
 
     local src="$target/$file"
     local dst="$target/$(basename "$file")"
@@ -191,7 +423,7 @@ download_model_HF() {
       echo "ℹ️ [Download] exclude filter: $exclude"
       args+=(--exclude "$exclude")
     fi
-    hf download "$model" "${args[@]}" --local-dir "$local_dir"
+    run_hf_download "$model" "${args[@]}" --local-dir "$local_dir"
     sleep 1
   fi
 }
@@ -201,21 +433,55 @@ download_EXL_HF() {
   local model="${!model_var:-}" revision="${!revision_var:-}" dest_dir="${!dest_dir_var:-}"
   if [[ -n "$model" && -n "$revision" && -n "$dest_dir" ]]; then
     echo "ℹ️ [Download] EXL repo: $model (rev: $revision) -> $dest_dir"
-    hf download "$model" --revision "$revision" --local-dir "/workspace/textgen/user_data/models/$dest_dir/"
+    run_hf_download "$model" --revision "$revision" --local-dir "/workspace/textgen/user_data/models/$dest_dir/"
     sleep 1
   fi
+}
+
+get_max_vram_gib() {
+  if ! command -v nvidia-smi >/dev/null 2>&1; then
+    echo 0
+    return
+  fi
+
+  nvidia-smi \
+    --query-gpu=memory.total \
+    --format=csv,noheader,nounits \
+    | awk 'BEGIN{m=0} {if($1>m) m=$1} END{print int(m/1024)}'
 }
 
 if [[ "$HAS_CUDA" -eq 1 ]]; then  
 
 	echo "📥 Provisioning models HF"
+
+	MAX_VRAM_GIB="$(get_max_vram_gib)"
+	VRAM_THRESHOLD="${VRAM_THRESHOLD:-36}"
+
+	if (( MAX_VRAM_GIB > VRAM_THRESHOLD )); then
+	  HF_VRAM_PREFIX="HF_MODEL_HVRAM_"
+	  echo "🟢 High VRAM detected (${MAX_VRAM_GIB} GB > ${VRAM_THRESHOLD} GB via VRAM_THRESHOLD)"
+	else
+	  HF_VRAM_PREFIX="HF_MODEL_LVRAM_"
+	  echo "🟡 Low VRAM detected (${MAX_VRAM_GIB} GB <= ${VRAM_THRESHOLD} GB via VRAM_THRESHOLD)"
+	fi
+
+	# VRAM-dependent GGUF files. Only the selected HVRAM or LVRAM profile is
+	# downloaded; the generic variables below remain VRAM-independent.
+	for i in {1..6}; do
+	  download_model_HF_GGUF "${HF_VRAM_PREFIX}GGUF${i}" "${HF_VRAM_PREFIX}GGUF_FILE${i}"
+	done
+
+	# VRAM-dependent multimodal projectors.
+	for i in {1..6}; do
+	  download_mmproj_HF_GGUF "${HF_VRAM_PREFIX}MMPROJ_GGUF${i}" "${HF_VRAM_PREFIX}MMPROJ_GGUF_FILE${i}"
+	done
 	
-	# GGUF (single files)
+	# VRAM-independent GGUF files.
 	for i in {1..6}; do
 	  download_model_HF_GGUF "HF_MODEL_GGUF${i}" "HF_MODEL_GGUF_FILE${i}"
 	done
 	
-	# mmproj (single files)
+	# VRAM-independent multimodal projectors.
 	for i in {1..6}; do
 	  download_mmproj_HF_GGUF "HF_MMPROJ_GGUF${i}" "HF_MMPROJ_GGUF_FILE${i}"
 	done
