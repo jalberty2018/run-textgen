@@ -100,29 +100,6 @@ else
   echo "⚠️ Python not found – assuming no CUDA"
 fi
 
-# Start textgen (HTTP port 7860)
-
-if [[ "$HAS_CUDA" -eq 1 ]]; then  	
-    echo "✅ Gradio service starting (CUDA available)"
-
-	cd /workspace/textgen/
-	
-	if [[ -n "$GRADIO_AUTH" ]]; then
-       python3 server.py --gradio-auth "$GRADIO_AUTH" --listen &
-	else
-	   echo "⚠️ WARNING: GRADIO_AUTH (user:password) is not set as an environment variable"
-	   python3 server.py --listen &
-	fi
-	
-	sleep 5
-	
-	# Confirmation	
-	echo "🎉 textgen started"
-	
-else
-    echo "❌ ERROR: PyTorch CUDA driver mismatch or unavailable, Gradio not started"
-fi
-
 # --- Download helpers ---
 
 run_hf_download() {
@@ -450,6 +427,136 @@ get_max_vram_gib() {
     | awk 'BEGIN{m=0} {if($1>m) m=$1} END{print int(m/1024)}'
 }
 
+select_textgen_startup_model() {
+  TEXTGEN_STARTUP_MODEL="${TEXTGEN_MODEL:-}"
+  TEXTGEN_STARTUP_MMPROJ="${TEXTGEN_MMPROJ:-}"
+
+  # An explicit model always wins. Automatic selection can be disabled while
+  # retaining the option to start an explicitly named model.
+  if [[ -n "$TEXTGEN_STARTUP_MODEL" || "${TEXTGEN_AUTOLOAD_MODEL:-1}" == "0" ]]; then
+    return
+  fi
+
+  local i
+  local model_var
+  local mmproj_var
+  local model_file
+  local mmproj_file
+
+  # Prefer the profile selected from the detected VRAM. Keep the model and its
+  # multimodal projector paired by their numeric index.
+  if [[ -n "${HF_VRAM_PREFIX:-}" ]]; then
+    for i in {1..6}; do
+      model_var="${HF_VRAM_PREFIX}GGUF_FILE${i}"
+      mmproj_var="${HF_VRAM_PREFIX}MMPROJ_GGUF_FILE${i}"
+      model_file="${!model_var:-}"
+
+      if [[ -n "$model_file" ]]; then
+        TEXTGEN_STARTUP_MODEL="$(basename "$model_file")"
+        mmproj_file="${!mmproj_var:-}"
+        if [[ -z "$TEXTGEN_STARTUP_MMPROJ" && -n "$mmproj_file" ]]; then
+          TEXTGEN_STARTUP_MMPROJ="$(basename "$mmproj_file")"
+        fi
+        echo "ℹ️ textgen startup model selected from ${model_var}"
+        return
+      fi
+    done
+  fi
+
+  # Fall back to the first VRAM-independent GGUF model.
+  for i in {1..6}; do
+    model_var="HF_MODEL_GGUF_FILE${i}"
+    mmproj_var="HF_MMPROJ_GGUF_FILE${i}"
+    model_file="${!model_var:-}"
+
+    if [[ -n "$model_file" ]]; then
+      TEXTGEN_STARTUP_MODEL="$(basename "$model_file")"
+      mmproj_file="${!mmproj_var:-}"
+      if [[ -z "$TEXTGEN_STARTUP_MMPROJ" && -n "$mmproj_file" ]]; then
+        TEXTGEN_STARTUP_MMPROJ="$(basename "$mmproj_file")"
+      fi
+      echo "ℹ️ textgen startup model selected from ${model_var}"
+      return
+    fi
+  done
+
+  # Full Transformers and EXL repositories are loaded by their destination
+  # directory name.
+  for i in {1..6}; do
+    model_var="HF_MODEL_DIR${i}"
+    if [[ -n "${!model_var:-}" ]]; then
+      TEXTGEN_STARTUP_MODEL="${!model_var}"
+      echo "ℹ️ textgen startup model selected from ${model_var}"
+      return
+    fi
+  done
+
+  for i in {1..6}; do
+    model_var="HF_EXL_DIR${i}"
+    if [[ -n "${!model_var:-}" ]]; then
+      TEXTGEN_STARTUP_MODEL="${!model_var}"
+      echo "ℹ️ textgen startup model selected from ${model_var}"
+      return
+    fi
+  done
+}
+
+start_textgen() {
+  local models_dir="/workspace/textgen/user_data/models"
+  local mmproj_dir="/workspace/textgen/user_data/mmproj"
+  local model_path=""
+  local mmproj_path=""
+  local -a textgen_args=(--listen)
+
+  select_textgen_startup_model
+
+  if [[ -n "${GRADIO_AUTH:-}" ]]; then
+    textgen_args+=(--gradio-auth "$GRADIO_AUTH")
+  else
+    echo "⚠️ WARNING: GRADIO_AUTH (user:password) is not set as an environment variable"
+  fi
+
+  if [[ -n "$TEXTGEN_STARTUP_MODEL" ]]; then
+    model_path="$TEXTGEN_STARTUP_MODEL"
+    [[ "$model_path" != /* ]] && model_path="${models_dir}/${model_path}"
+
+    if [[ -e "$model_path" ]]; then
+      textgen_args+=(--model "$TEXTGEN_STARTUP_MODEL")
+      echo "✅ textgen will load model: ${TEXTGEN_STARTUP_MODEL}"
+
+      if [[ -n "$TEXTGEN_STARTUP_MMPROJ" ]]; then
+        mmproj_path="$TEXTGEN_STARTUP_MMPROJ"
+        [[ "$mmproj_path" != /* ]] && mmproj_path="${mmproj_dir}/${mmproj_path}"
+
+        if [[ -f "$mmproj_path" ]]; then
+          textgen_args+=(--mmproj "$mmproj_path")
+          echo "✅ textgen will load mmproj: ${mmproj_path}"
+        else
+          echo "⚠️ Configured mmproj not found: ${mmproj_path}; starting without --mmproj"
+        fi
+      fi
+    else
+      echo "⚠️ Configured startup model not found: ${model_path}; starting without --model"
+    fi
+  else
+    echo "ℹ️ No startup model configured; textgen will start without loading a model"
+  fi
+
+  echo "▶️ Gradio service starting (CUDA available)"
+  cd /workspace/textgen/ || return 1
+  python3 server.py "${textgen_args[@]}" &
+  TEXTGEN_PID=$!
+
+  sleep 5
+  if kill -0 "$TEXTGEN_PID" 2>/dev/null; then
+    echo "🎉 textgen started"
+    return 0
+  fi
+
+  echo "❌ ERROR: textgen stopped during startup"
+  return 1
+}
+
 if [[ "$HAS_CUDA" -eq 1 ]]; then  
 
 	echo "📥 Provisioning models HF"
@@ -495,11 +602,15 @@ if [[ "$HAS_CUDA" -eq 1 ]]; then
 	for i in {1..6}; do
 	  download_EXL_HF "HF_EXL${i}" "HF_EXL_REVISION${i}" "HF_EXL_DIR${i}"
 	done
-	
-    HAS_PROVISIONING=1
+
+    if start_textgen; then
+      HAS_PROVISIONING=1
+    else
+      HAS_PROVISIONING=0
+    fi
 else
     HAS_PROVISIONING=0   
-    echo "⚠️ Skipped Provisioning: models downloaded as Gradio is not started"
+    echo "⚠️ Skipped provisioning and textgen startup: CUDA is unavailable"
 fi
 
 python - <<'PY'
