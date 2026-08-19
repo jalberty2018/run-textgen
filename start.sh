@@ -101,6 +101,7 @@ else
 fi
 
 # Start textgen before provisioning models (HTTP port 7860)
+HAS_TEXTGEN=0
 if [[ "$HAS_CUDA" -eq 1 ]]; then
     echo "▶️ Gradio service starting (CUDA available)"
 
@@ -113,8 +114,29 @@ if [[ "$HAS_CUDA" -eq 1 ]]; then
         python3 server.py --listen &
     fi
 
-    sleep 5
-    echo "🎉 textgen started"
+    # Wait until textgen is ready.
+    MAX_TRIES="${TEXTGEN_START_MAX_TRIES:-60}"
+    COUNT=0
+
+    until curl -s http://127.0.0.1:7860 > /dev/null; do
+        COUNT=$((COUNT+1))
+
+        if [[ $COUNT -ge $MAX_TRIES ]]; then
+            echo "⚠️  WARNING: textgen is still not responding after $MAX_TRIES attempts (~5 min)."
+            echo "⚠️  SOLUTION: Use another region than ${RUNPOD_DC_ID:-the current region} if vCPU speed is slow."
+            echo "⚠️  Continuing provisioning anyway..."
+            break
+        fi
+
+        echo "ℹ️ Waiting for textgen to come online... ($COUNT/$MAX_TRIES)"
+        sleep 5
+    done
+
+    # Success message only when textgen responded.
+    if curl -s http://127.0.0.1:7860 > /dev/null; then
+        HAS_TEXTGEN=1
+        echo "🎉 textgen is online!"
+    fi
 else
     echo "❌ ERROR: PyTorch CUDA driver mismatch or unavailable, Gradio not started"
 fi
@@ -567,7 +589,19 @@ else
     fi
 fi
 
+python - <<'PY'
+import torch, platform, triton, os
+print(f"Python: {platform.python_version()}")
+print(f"PyTorch: {torch.__version__}")
+print(f"Triton version: {triton.__version__}")
+print(f"CUDA available: {torch.cuda.is_available()}")
+if torch.cuda.is_available():
+    print(f"  ↳ CUDA runtime: {torch.version.cuda}")
+    print(f"  ↳ GPU(s): {[torch.cuda.get_device_name(i) for i in range(torch.cuda.device_count())]}")
+    print(f"  ↳ cuDNN: {torch.backends.cudnn.version()}")
+    print(f"Torch build info: {torch.__config__.show()}")
+PY
+
 # Keep the container running
 echo "ℹ️ End script"
 exec sleep infinity
-

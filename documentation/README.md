@@ -2,6 +2,8 @@
 
 textgen starts without automatically loading a model. Hugging Face provisioning runs afterwards; load the downloaded model from the textgen interface when it becomes available.
 
+Before provisioning begins, the startup script checks textgen locally on port `7860`. Set `TEXTGEN_START_MAX_TRIES` to change the default limit of `60` checks with five seconds between attempts.
+
 ## **Hugging Face**
 
 ```bash

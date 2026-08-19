@@ -104,6 +104,8 @@ All Hugging Face model downloads start with the Xet backend. Before downloading,
 
 ## Connection options
 
+textgen is checked locally on port `7860` before model provisioning continues. `TEXTGEN_START_MAX_TRIES` controls the maximum number of checks, with five seconds between attempts; the default is `60` (about five minutes).
+
 ### Services
 
 | Service         | Port          |
