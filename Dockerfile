@@ -22,6 +22,8 @@ python -m pip install -r requirements/full/requirements.txt
 WORKDIR /
 
 # Update Hugging Face CLI and verify the hf command is available
+RUN --mount=type=cache,target=/root/.cache/pip \
+python -m pip install -U huggingface_hub
 RUN hf update && hf version
 
 # Install code-server
