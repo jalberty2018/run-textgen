@@ -1,5 +1,7 @@
 # Pod image
 
+textgen starts without automatically loading a model. Hugging Face provisioning runs afterwards; load the downloaded model from the textgen interface when it becomes available.
+
 ## **Hugging Face**
 
 ```bash
@@ -23,14 +25,6 @@ Automatic model provisioning first uses the Xet backend and retries with plain H
 The largest GPU detected with `nvidia-smi` selects the download profile. More than `VRAM_THRESHOLD` GiB selects `HVRAM`; the default threshold is `36`. Otherwise `LVRAM` is selected.
 
 Use `HF_MODEL_HVRAM_GGUF[1-6]` and `HF_MODEL_HVRAM_GGUF_FILE[1-6]` for high-VRAM GGUF files, or replace `HVRAM` with `LVRAM` for low-VRAM files. Multimodal projectors use `HF_MODEL_HVRAM_MMPROJ_GGUF[1-6]` and `HF_MODEL_HVRAM_MMPROJ_GGUF_FILE[1-6]`, with equivalent `LVRAM` variables. Generic GGUF and MMPROJ variables are always processed.
-
-## Automatic model loading
-
-After provisioning, textgen automatically starts with the first model from the selected HVRAM/LVRAM profile. If none is configured, it checks generic GGUF, Transformers, and EXL variables in that order. A matching MMPROJ index is loaded for vision GGUF models.
-
-- Set `TEXTGEN_MODEL` to override the selected model.
-- Set `TEXTGEN_MMPROJ` to override its multimodal projector.
-- Set `TEXTGEN_AUTOLOAD_MODEL=0` to start textgen without automatically selecting a downloaded model.
 
 ## Utilities
 

@@ -3,6 +3,7 @@
 ## This pod downloads models as specified in the **environment variables**
 
 - Models are automatically downloaded based on the specified paths in the environment configuration.
+- textgen starts first without automatically loading a model; provisioning runs afterwards, and downloaded models can then be loaded from the textgen interface.
 - Authentication credentials can be set via secrets for:
   - **Code server** authentication (not possible to switch off).
   - **Hugging Face** tokens for model access.
@@ -40,24 +41,6 @@ The base image provides Ubuntu 24.04, CUDA 12.8.1, cuDNN development libraries, 
 | Hugging Face  | `HF_TOKEN`           | token | Optional  |
 | Code Server  | `PASSWORD`           | password | Optional |
 | textgen       | `GRADIO_AUTH`        | user:password | Optional |
-
-### Automatic model loading
-
-Model downloads finish before textgen starts. By default, textgen automatically loads the first configured model using this priority:
-
-1. `TEXTGEN_MODEL` (explicit override).
-2. First GGUF model from the selected HVRAM/LVRAM profile.
-3. First VRAM-independent GGUF model.
-4. First Transformers destination directory.
-5. First EXL destination directory.
-
-For GGUF vision models, an MMPROJ with the same numeric index is passed through `--mmproj`.
-
-| Environment Variable | Description | Default |
-|----------------------|-------------|---------|
-| `TEXTGEN_MODEL` | Model filename or destination directory to load; overrides automatic selection | First configured model |
-| `TEXTGEN_MMPROJ` | MMPROJ filename or absolute path used with `TEXTGEN_MODEL` | Matching template MMPROJ |
-| `TEXTGEN_AUTOLOAD_MODEL` | Set to `0` to disable selection from model download variables | `1` |
 
 ## 📦 **GGUF Model Downloads**
 

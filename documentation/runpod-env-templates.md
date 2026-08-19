@@ -132,8 +132,6 @@ The template configures both quantizations. At startup, `start.sh` reads the lar
 
 The boundary comes from `VRAM_THRESHOLD=36`. Change this variable when a different split is required. Q4_K_M leaves more VRAM available for the vision projector, KV cache, and runtime overhead.
 
-After the selected model and MMPROJ have been downloaded, textgen starts with them automatically. No separate `TEXTGEN_MODEL` value is required for this template.
-
 #### Combined RunPod template
 
 ```bash
