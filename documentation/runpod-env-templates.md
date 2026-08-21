@@ -119,6 +119,18 @@ HF_MMPROJ_GGUF1=alexnt2/dolphin-mistral-24b-venice-edition-literotica
 HF_MMPROJ_GGUF_FILE1=Dolphin-Mistral-24B-Venice-Edition.BF16-mmproj.gguf
 ```
 
+## [Qwen3.8 27B uncensored FP8 Q4_K_M GGUF](https://huggingface.co/theresa00l/Qwen3.8-27B-Uncensored-FP8-Q4_K_M-GGUF)
+
+```bash
+HF_TOKEN="{{ RUNPOD_SECRET_HF_TOKEN_WRITE }}"
+PASSWORD="{{ RUNPOD_SECRET_CODE-SERVER-NEW }}"
+GRADIO_AUTH="{{ RUNPOD_SECRET_Gradio_auth }}"
+HF_MODEL_GGUF1=theresa00l/Qwen3.8-27B-Uncensored-FP8-Q4_K_M-GGUF
+HF_MODEL_GGUF_FILE1=qwen3.8-27b-uncensored-fp8-q4_k_m.gguf
+HF_MMPROJ_GGUF1=unsloth/Qwen3.8-27B-GGUF
+HF_MMPROJ_GGUF_FILE1=mmproj-F16.gguf
+```
+
 ## [Qwen3 VL 32B Instruct ultra uncensored heretic](https://huggingface.co/mradermacher/Qwen3-VL-32B-Instruct-ultra-uncensored-heretic-GGUF)
 
 ### Automatic HVRAM/LVRAM selection
